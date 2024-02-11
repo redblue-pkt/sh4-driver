@@ -1,0 +1,80 @@
+#!/bin/sh
+
+BRANDCHECK=`sed -En 's|^brand=(.+)$|\1|p' /usr/lib/enigma.info`
+MODELCHECK=`sed -En 's|^model=(.+)$|\1|p' /usr/lib/enigma.info`
+
+if [ $# -eq 1 ]; then
+   if [ "$1" = "-a" ]; then
+       echo "enter standby..."
+       #clear display
+       fp_control -c
+       #disable hdmi
+       stfbcontrol hd
+       #call fp_control in a "sleep" loop, display time if 
+       #configured in /etc/vdstandby.cfg and make receiver
+       #specific stuff
+       fp_control -p 00:00:00 01-01-2030 &
+   elif [ "$1" = "-d" ]; then
+       echo "end standby..."
+       #enable hdmi
+       stfbcontrol he
+       if [ $MODELCHECK == "spark" ]; then
+          fp_control -c #everthing off
+          fp_control -l 0 0
+          fp_control -e
+          echo "0" > /proc/progress
+       fi
+       if [ $MODELCHECK == "spark7162" ]; then
+          fp_control -sst
+          fp_control -tm 1
+          fp_control -e
+          fp_control -l 0 0
+          echo "0" > /proc/progress
+       fi
+       if [ $BRANDCHECK == "cuberevo" ]; then
+          fp_control -l 0 0
+          fp_control -dt 0
+          fp_control -e
+          echo "0" > /proc/progress
+       fi
+       if [ $BRANDCHECK == "ipbox" ]; then
+          #mkdir -p /dev/dbox
+          #mknod /dev/dbox/vfd c 147 0
+          vfdctl cleardisplay #clear text in display
+          vfdctl standby
+          vfdctl deep #halt display to deep standby
+       fi
+       if [ $BRANDCHECK == "fortis" ] || [ $BRANDCHECK == "hs" ] || [ $MODELCHECK == "octagon1008" ]; then
+          fp_control -sst
+          fp_control -e
+       fi
+       if [ $BRANDCHECK == "atemio" ] || [ $MODELCHECK == "vitamin_hd5000" ]; then
+          fp_control -e
+       fi
+       if [ $MODELCHECK == "adb_box" ]; then
+          fp_control -l 1 1
+          echo "OFF" > /dev/vfd
+       fi
+       if [ $MODELCHECK == "tf7700" ]; then
+          tffpctl --brightness 5
+          tffpctl --cleardisplay
+          tffpctl --poweroff
+       fi
+       if [ $MODELCHECK == "ufs912" ] || [ $MODELCHECK == "ufs913" ]; then
+          #green green off
+          fp_control -l 2 0
+          #green red on
+          fp_control -l 3 1
+          #led brightness
+          fp_control -led 5
+          fp_control -e
+       fi
+       if [ $MODELCHECK == "ufs910" ] || [ $MODELCHECK == "ufs922" ] || [ $MODELCHECK == "ufc960" ]; then
+          fp_control -e
+          echo "0" > /proc/progress
+       fi
+       pid=`pidof fp_control`
+       echo pid = $pid
+       kill -9 $pid
+   fi
+fi

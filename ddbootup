@@ -1,0 +1,49 @@
+#!/bin/sh
+
+BRANDCHECK=`sed -En 's|^brand=(.+)$|\1|p' /usr/lib/enigma.info`
+
+# Load coprocessor firmware
+if [ $brandcheck == "forever" ]; then
+	/bin/ustslave /dev/st231-0 /boot/companion_h205_video_Ax.bin
+	/bin/ustslave /dev/st231-0 /boot/companion_h205_video_Bx.bin
+	/bin/ustslave /dev/st231-1 /boot/companion_h205_audio.bin
+else
+	/bin/ustslave /dev/st231-0 /boot/video.elf
+	/bin/ustslave /dev/st231-1 /boot/audio.elf
+fi
+
+# Run sysv init
+exec /sbin/init
+
+# Create display device if not present
+if [ -e /dev/dbox/oled0 ] ; then
+	ln -s /dev/dbox/oled0 /dev/vfd
+fi
+
+# Create hdmi cec device
+if [ ! -e /dev/hdmi_cec ] ; then
+        /bin/mknod /dev/hdmi_cec c 149 0
+fi
+
+# Flush eth0 device which is set by kernel cmdline
+ip addr flush dev eth0 scope global
+
+if [ $BRANDCHECK == "forever" ]; then
+	if [ ! -e /boot/companion_h205_audio.bin ] ; then
+		echo "Audio firmware missing!"
+		echo "Audio FW missing!" > /dev/vfd
+	fi
+	if [ ! -e /boot/companion_h205_video_Ax.bin ] || [ ! -e /boot/companion_h205_video_Bx.bin ] ; then
+		echo "Video firmware missing!"
+		echo "Video FW missing!" > /dev/vfd
+	fi
+else
+	if [ ! -e /boot/audio.elf ] ; then
+		echo "Audio firmware missing!"
+		echo "Audio FW missing!" > /dev/vfd
+	fi
+	if [ ! -e /boot/video.elf ] ; then
+		echo "Video firmware missing!"
+		echo "Video FW missing!" > /dev/vfd
+	fi
+fi
